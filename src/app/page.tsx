@@ -11,7 +11,7 @@ import React from "react";
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <nav className="bg-white border-b border-blue-100 px-6 py-4">
+      <nav className="bg-white border-b border border-blue-100 px-6 py-4">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
@@ -45,7 +45,9 @@ export default function HomePage() {
             </Link>
           </Button>
           <Button size="lg" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 text-lg">
-            Learn More
+            <a href="#working">
+              Learn More
+              </a>
           </Button>
         </div>
       </section>
@@ -95,7 +97,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-6 py-16">
+      <section id="working" className="max-w-6xl mx-auto px-6 py-16">
         <h2 className="text-3xl font-bold text-center text-blue-900 mb-12">
           How RepoGPT Works
         </h2>
@@ -179,7 +181,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="bg-blue-900 text-white py-12">
+      <footer className="bg-blue-900 text-white py-2">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-6 md:mb-0">

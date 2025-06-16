@@ -18,7 +18,7 @@ import CodeReferences from "./code-references";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import useRefetch from "@/hooks/use-refetch";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 
 const AskQuestionCard = () => {
@@ -87,6 +87,7 @@ const AskQuestionCard = () => {
                 }
               >
                 {" "}
+                <Download />
                 Save Answer
               </Button>
             </div>

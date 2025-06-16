@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import useRefetch from "@/hooks/use-refetch";
 import { api } from "@/trpc/react";
-import { Info } from "lucide-react";
+import { ChevronRight, ChevronRightIcon, Info } from "lucide-react";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -127,9 +127,19 @@ const CreatePage = () => {
                 <span>Loading…</span>
               </div>
             ) : creditChecked ? (
-              "Create Project"
+              <>
+                <div className="flex items-center space-x-2">
+                  Create Project
+                <ChevronRightIcon />
+                </div>
+              </>
             ) : (
-              "Check Credits"
+              <>
+                <div className="flex items-center space-x-2">
+                  Check Credits
+                  <ChevronRightIcon />
+                </div>
+              </>
             )}
           </Button>
         </form>
