@@ -1,7 +1,6 @@
 `RepoGPT` is an AI-powered developer productivity tool which allows users to analyze their github repositories and summarize commits, ask questions about the codebase and transcribe meetings.
 
 ## [Try it out!](https://repogpt-xi.vercel.app/)
-
 ___
 
 # Create T3 App
