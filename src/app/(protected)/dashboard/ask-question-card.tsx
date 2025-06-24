@@ -63,7 +63,7 @@ const AskQuestionCard = () => {
                   alt="logo"
                   width={40}
                   height={40}
-                  className="rounded-full"
+                  className="rounded-xl"
                 />
               </DialogTitle>
               <Button
@@ -81,7 +81,7 @@ const AskQuestionCard = () => {
                       refetch();
                     },
                     onError: (error) => {
-                      toast.error("Failed to save answer:");
+                      toast.error("Failed to save answer");
                     }
                   })
                 }

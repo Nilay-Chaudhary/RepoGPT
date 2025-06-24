@@ -46,9 +46,7 @@ export async function getFileCount(
     recursive: "true",
   });
 
-  const fileCount = treeData.tree.filter((item) => item.type === "blob")
-    .length;
-
+  const fileCount = treeData.tree.filter((item) => item.type === "blob").length;
   return fileCount;
 }
 
@@ -56,21 +54,25 @@ export const checkCredits = async (
   githubUrl: string,
   githubToken?: string
 ): Promise<number> => {
+  if (!githubUrl) throw new Error("GitHub URL is required");
+
   const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN!,
+    auth: githubToken || process.env.GITHUB_TOKEN,
   });
 
-  const [, , , githubOwner, githubRepo] = githubUrl.split("/");
+  const parts = githubUrl.split("/");
+  const githubOwner = parts[3];
+  const githubRepo = parts[4];
+
   if (!githubOwner || !githubRepo) {
-    return 0;
+    throw new Error("Invalid GitHub URL format");
   }
 
   try {
     const fileCount = await getFileCount(githubOwner, githubRepo, octokit);
     return fileCount;
-  } catch (err) {
-    console.error("Error counting files:", err);
-    return 0;
+  } catch (err: any) {
+      throw new Error(`Could not check credits`);
   }
 };
 

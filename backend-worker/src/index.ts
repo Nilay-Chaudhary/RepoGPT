@@ -15,15 +15,15 @@ app.post("/index", async (req, res) => {
   res.status(202).json({ status: "queued" });
 
   try {
-    console.log("⏳ Indexing repo...");
+    console.log("Indexing repo...");
     await indexGithubRepo(projectId, githubUrl, githubToken);
-    console.log("✅ Done indexing");
+    console.log("Done indexing");
   } catch (err) {
-    console.error("❌ Indexing failed:", err);
+    console.error("Indexing failed:", err);
   }
 });
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`✅ Background worker listening on port ${PORT}`);
+  console.log(`Background worker listening on port ${PORT}`);
 });

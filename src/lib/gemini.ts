@@ -55,30 +55,6 @@ export const aiSummariseCommit = async (
     }
 }
 
-// export async function summariseCode(doc: Document) {
-//     try {
-//         const code = doc.pageContent.slice(0, 10000);
-//         const response = await model.generateContent([`
-//         You are an intelligent senior software developer who speacializes in onboarding junior software
-//         engineers onto projects. You are explaining the purpose of the 
-//         ${doc.metadata.source} file. Here is the code \n\n ${code} \n \n
-//         Give a to-the-point summary of no more than 200 words of the code above.
-//     `])
-//         return response.response.text();
-//     } catch (error) {
-//         console.error("Error while summarising commit:", error);
-//         return "";
-//     }
-// }
-
-// export async function generateEmbedding(summary: string) {
-//     const model = genAI.getGenerativeModel({
-//         model: "text-embedding-004"
-//     })
-//     const result = await model.embedContent(summary);
-//     const embedding = result.embedding;
-//     return embedding.values
-// }
 
 
 export async function summariseCode(doc: Document, client?: GoogleGenerativeAI) {
