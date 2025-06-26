@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { indexGithubRepo } from "./indexer";
+import { indexGithubRepo } from "./indexer.js";
 
 dotenv.config();
 

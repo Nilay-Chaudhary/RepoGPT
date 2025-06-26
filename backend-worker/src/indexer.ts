@@ -1,6 +1,6 @@
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { Document } from "@langchain/core/documents";
-import { db } from './lib/prisma';
+import { db } from './lib/prisma.js';
 import { Octokit } from "octokit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -53,14 +53,27 @@ const API_KEYS = [
     process.env.GEMINI_API_KEY_10!,
 ];
 
+async function getDefaultBranch(owner: string, repo: string, githubToken?: string) {
+    const octokit = new Octokit({
+        auth: githubToken || process.env.GITHUB_TOKEN,
+    });
+    const { data } = await octokit.rest.repos.get({ owner, repo });
+    return data.default_branch;
+}
 
 export const loadGithubRepo = async (
     githubUrl: string,
     githubToken?: string,
 ) => {
+    const parts = githubUrl.split("/");
+    const githubOwner = parts[3];
+    const githubRepo = parts[4];
+    if(!githubOwner || !githubRepo) throw new Error("Invalid URL");
+
+    const defaultBranch = await getDefaultBranch(githubOwner, githubRepo, githubToken);
     const loader = new GithubRepoLoader(githubUrl, {
         accessToken: githubToken || process.env.GITHUB_TOKEN || "",
-        branch: "main",
+        branch: defaultBranch,
         ignoreFiles: [
             "package-lock.json",
             "yarn-lock",
