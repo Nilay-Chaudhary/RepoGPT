@@ -68,7 +68,7 @@ export const loadGithubRepo = async (
     const parts = githubUrl.split("/");
     const githubOwner = parts[3];
     const githubRepo = parts[4];
-    if(!githubOwner || !githubRepo) throw new Error("Invalid URL");
+    if (!githubOwner || !githubRepo) throw new Error("Invalid URL");
 
     const defaultBranch = await getDefaultBranch(githubOwner, githubRepo, githubToken);
     const loader = new GithubRepoLoader(githubUrl, {
@@ -80,6 +80,7 @@ export const loadGithubRepo = async (
             "pnpm-lock.yaml",
             "bun.lockb",
         ],
+        ignorePaths: ["**/node_modules/**"],
         recursive: true,
         unknown: "warn",
         maxConcurrency: 5,
@@ -94,6 +95,7 @@ export const indexGithubRepo = async (
     githubToken?: string,
 ) => {
     const docs = await loadGithubRepo(githubUrl, githubToken);
+    console.log("Total files: ", docs.length);
     const allEmbeddings = await generateEmbeddings(docs);
     await Promise.allSettled(
         allEmbeddings.map(async (embedding, index) => {

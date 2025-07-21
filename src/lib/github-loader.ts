@@ -46,7 +46,10 @@ export async function getFileCount(
     recursive: "true",
   });
 
-  const fileCount = treeData.tree.filter((item) => item.type === "blob").length;
+  const fileCount = treeData.tree
+    .filter(item => item.type === "blob")
+    .filter(item => !item.path.includes("node_modules/"))
+    .length; 
   return fileCount;
 }
 
@@ -72,7 +75,7 @@ export const checkCredits = async (
     const fileCount = await getFileCount(githubOwner, githubRepo, octokit);
     return fileCount;
   } catch (err: any) {
-      throw new Error(`Could not check credits`);
+    throw new Error(`Could not check credits`);
   }
 };
 
@@ -89,6 +92,7 @@ export const loadGithubRepo = async (
       "pnpm-lock.yaml",
       "bun.lockb",
     ],
+    ignorePaths: ["**/node_modules/**"],
     recursive: true,
     unknown: "warn",
     maxConcurrency: 5,
