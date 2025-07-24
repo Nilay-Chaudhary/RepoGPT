@@ -5,34 +5,31 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateEmbedding } from '@/lib/gemini'
 import { db } from '@/server/db'
 
+
 const google = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY
 })
 
+
 export async function askQuestion(question: string, projectId: string) {
-    const stream = createStreamableValue();
     const queryVector = await generateEmbedding(question)
     const vectorQuery = `[${queryVector.join(',')}]`
 
     const result = await db.$queryRaw`
-                    SELECT "fileName", "sourceCode", "summary",
+    SELECT "fileName", "sourceCode", "summary",
                     1 - ("summaryEmbedding" <=> ${vectorQuery}::vector) as similarity
                     FROM "SourceCodeEmbedding"
                     WHERE 1 - ("summaryEmbedding" <=> ${vectorQuery}::vector) > 0.4
                     AND "projectId" = ${projectId}
                     ORDER BY similarity DESC
-                    LIMIT 10
+                    LIMIT 5
                     ` as { fileName: string; sourceCode: string; summary: string }[]
     let context = ""
     for (const doc of result) {
         context += `source: ${doc.fileName}\ncode content: ${doc.sourceCode}\nsummary of file: ${doc.summary}\n\n`
     }
-    (async () => {
-        const { textStream } = await streamText({
-            model: google('gemini-1.5-flash'),
-            prompt:
-                `
-                You are an AI code assistant who answers questions about the codebase. Assume all queries
+
+    const prompt = `You are an AI code assistant who answers questions about the codebase. Assume all queries
                 are somehow related to the codebase. Your target
                 audience is a technical intern who is looking to understand the codebase.
                 AI assistant is a brand new, powerful, humanlike AI. THe traits of AI include expert knowledge,
@@ -44,13 +41,13 @@ export async function askQuestion(question: string, projectId: string) {
                 If the question is asking about code or a specific file, AI will provide the detailed answer, giving step by step
                 instructions including code snippets
 
-                START CONTEXT BLOCK
+                START CONTEXT BLOCK:\n
                 ${context}
-                END CONTEXT BLOCK
+                \n--END CONTEXT BLOCK--\n
 
-                START QUESTION BLOCK
+                START QUESTION BLOCK:
                 ${question}
-                END QUESTION BLOCK
+                \n--END QUESTION BLOCK--\n
 
                 AI assistant will take into account any CONTEXT BLOCK that is provided in a conversation.
                 The CONTEXT BLOCK contains code content and summary. AI assistant will use these answers the queries
@@ -62,12 +59,21 @@ export async function askQuestion(question: string, projectId: string) {
                 AI assistant will not invent anything that is not drawn directly from the context.
                 Answer in markdown syntax, with code snippets if needed. Be as detailed as possible when answering.
                 `
-
-        })
-        for await (const delta of textStream) {
-            stream.update(delta)
+    const stream = createStreamableValue('');
+    stream.update('');
+    (async () => {
+        try {
+            const { textStream } = streamText({
+                model: google('gemini-2.0-flash-lite'),
+                prompt: prompt
+            })
+            for await (const delta of textStream) {
+                stream.update(delta)
+            }
         }
-        stream.done();
+        finally {
+            stream.done();
+        }
     })()
     return { output: stream.value, filesReferences: result }
 }
