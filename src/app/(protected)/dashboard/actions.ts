@@ -64,7 +64,7 @@ export async function askQuestion(question: string, projectId: string) {
     (async () => {
         try {
             const { textStream } = streamText({
-                model: google('gemini-2.0-flash-lite'),
+                model: google('gemini-1.5-flash'),
                 prompt: prompt
             })
             for await (const delta of textStream) {
