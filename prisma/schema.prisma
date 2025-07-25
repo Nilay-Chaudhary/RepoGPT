@@ -30,12 +30,20 @@ model Project {
   name         String
   githubUrl    String
   deletedAt    DateTime?
-  userToProjects UserToProject[]
-  commit Commit[]
+  userToProjects       UserToProject[]
+  commit               Commit[]
   sourceCodeEmbeddings SourceCodeEmbedding[]
-  savedQuestions Question[]
-  meetings Meeting[]
+  savedQuestions       Question[]
+  meetings             Meeting[]
+  indexingStatus ProjectIndexingStatus @default(IN_PROGRESS)
 }
+
+enum ProjectIndexingStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+
 
 model UserToProject {
   id           String   @id @default(cuid())

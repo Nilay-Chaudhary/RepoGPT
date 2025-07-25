@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { indexGithubRepo } from "./indexer.js";
+import { db } from './lib/prisma.js';
+
 
 dotenv.config();
 
@@ -17,7 +19,12 @@ app.post("/index", async (req, res) => {
   try {
     console.log("Indexing repo...");
     await indexGithubRepo(projectId, githubUrl, githubToken);
+    await db.project.update({
+      where: { id: projectId },
+      data: { indexingStatus: "COMPLETED" },
+    });
     console.log("Done indexing");
+
   } catch (err) {
     console.error("Indexing failed:", err);
   }

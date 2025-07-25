@@ -18,7 +18,7 @@ const DashboardPage = () => {
         <div className="bg-primary w-fit rounded-md px-3 py-4">
           <div className="flex items-center">
             <Github className="size5 text-white" />
-            <div className="ml-2">
+            <div className="ml-2 space-y-2">
               <p className="text-sm font-medium text-white">
                 This project is linked to:{" "}
                 <Link
@@ -29,9 +29,12 @@ const DashboardPage = () => {
                   <ExternalLink className="ml-1 size-4" />
                 </Link>
               </p>
+
             </div>
+
           </div>
         </div>
+
 
         <div className="h-4"></div>
 
@@ -42,6 +45,14 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      <div className="mt-4">
+        {project?.indexingStatus === "IN_PROGRESS" && (
+          <div className="flex items-center gap-2 rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-800 ring-1 ring-blue-300">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <span>File processing in progress...</span>
+          </div>
+        )}
+      </div>
       <div className="mt-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
           <AskQuestionCard />

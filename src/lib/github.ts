@@ -102,8 +102,8 @@ async function summariseCommit(
         `${githubUrl}/commit/${commitHash}.diff`,
         { headers: { Accept: "application/vnd.github.v3.diff" } }
     );
-
-    return (await aiSummariseCommit(diff, client)) || "";
+    const safeDiff = diff.slice(0, 500_000);
+    return (await aiSummariseCommit(safeDiff, client)) || "";
 }
 
 

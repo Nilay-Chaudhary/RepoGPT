@@ -17,6 +17,7 @@ export const aiSummariseCommit = async (
     const usedClient = client ?? defaultClient;
     const model = usedClient.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     console.log("CALLING  COMMIT SUMMARIZER");
+    
     try {
         const response = await model.generateContent([
             `You are an expert programmer and you are trying to summarize a git diff. Reminders about the
