@@ -34,7 +34,7 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
-      await pollCommits(project.id);
+      await pollCommits(project.id, input.githubToken);
       void fetch(`${baseUrl}/index`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,6 +70,7 @@ export const projectRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // console.log("polling")
       pollCommits(input.projectId).then().catch(console.error);
       return await ctx.db.commit.findMany({
         where: { projectId: input.projectId },

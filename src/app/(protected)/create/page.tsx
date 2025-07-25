@@ -35,7 +35,7 @@ const CreatePage = () => {
       toast.success("Project created successfully!");
       refetch();
       reset();
-      setCreditChecked(false); // reset flow
+      setCreditChecked(false);
     },
     onError: () => {
       toast.error("Failed to create project");

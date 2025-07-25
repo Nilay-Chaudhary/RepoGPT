@@ -1,6 +1,6 @@
 "use client";
 import useProject from "@/hooks/use-project";
-import { ExternalLink, Github } from "lucide-react";
+import { ExternalLink, Github, FolderOpen, FilePlus, Plus } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import CommitLog from "./commit-log";
@@ -12,6 +12,23 @@ import TeamMembers from "./team-members";
 
 const DashboardPage = () => {
   const { project } = useProject();
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-4">
+        <FolderOpen className="w-12 h-12" />
+        <p className="text-lg">No project selected</p>
+        <p className="text-sm text-gray-400">
+          Select or create a project to get started.
+        </p>
+        <Link href="/create">
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md shadow hover:bg-blue-600 transition cursor-pointer">
+            <Plus className="w-4 h-4" />
+            Create Project
+          </div>
+        </Link>
+      </div>
+    );
+  }
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-y-4">

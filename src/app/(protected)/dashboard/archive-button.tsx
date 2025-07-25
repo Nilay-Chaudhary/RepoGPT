@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const ArchiveButton = () => {
   const archiveProject = api.project.archiveProject.useMutation();
-  const { projectId } = useProject();
+  const { projectId, setProjectId } = useProject();
   const refetch = useRefetch();
 
   const handleArchive = () => {
@@ -23,6 +23,7 @@ const ArchiveButton = () => {
       {
         onSuccess: () => {
           toast.success("Project archived");
+          setProjectId("");
           refetch();
         },
         onError: () => {
