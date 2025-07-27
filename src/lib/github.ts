@@ -2,8 +2,7 @@ import { db } from '@/server/db';
 import { Octokit } from 'octokit'
 import axios from 'axios'
 import { aiSummariseCommit } from './gemini';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
+import { GoogleGenAI } from '@google/genai'
 
 export const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN!
@@ -36,8 +35,12 @@ const MAX_COMMITS = 10;
 const DELAY_MS = 200;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const genAIClients = API_KEYS.map((key) => new GoogleGenerativeAI(key));
-
+const genAIClients = API_KEYS.map(key =>
+    new GoogleGenAI({
+        apiKey: key,
+        vertexai: false
+    })
+)
 export const pollCommits = async (projectId: string, githubToken?: string) => {
     const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
     const commitHashes = await getCommitHashes(githubUrl, githubToken);
@@ -76,7 +79,7 @@ export const pollCommits = async (projectId: string, githubToken?: string) => {
 async function summariseCommit(
     githubUrl: string,
     commitHash: string,
-    client: GoogleGenerativeAI,
+    client: GoogleGenAI,
     githubToken?: string
 ): Promise<string> {
     const [owner, repo] = githubUrl.split("/").slice(-2);
@@ -92,11 +95,15 @@ async function summariseCommit(
         repo,
         ref: commitHash
     });
-
+    // console.log(commit);
     const fullDiff = commit.files
-        ?.map(file => file.patch)
-        .filter(Boolean)
-        .join("\n") ?? "";
+        ?.map(file => {
+            const path = file.filename;
+            const patch = file.patch ?? "";
+            const header = `diff --git a/${path} b/${path}`;
+            return [header, patch].join("\n");
+        })
+        .join("\n\n") ?? "";
 
     const safeDiff = fullDiff.slice(0, 500_000);
     return (await aiSummariseCommit(safeDiff, client)) || "";

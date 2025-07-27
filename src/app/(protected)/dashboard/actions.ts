@@ -1,13 +1,11 @@
 'use server'
-import { streamText } from 'ai'
-import { createStreamableValue } from 'ai/rsc'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateEmbedding } from '@/lib/gemini'
 import { db } from '@/server/db'
+import { createStreamableValue } from 'ai/rsc'
+import { GoogleGenAI } from '@google/genai'
 
-
-const google = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY
+const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY_QUESTION
 })
 
 
@@ -55,25 +53,26 @@ export async function askQuestion(question: string, projectId: string) {
                 If the context does not provide the answer to the question, AI assistant will say,
                 "I'm sorry, but I don't know the answer to your query. Please provide more context to allow me
                 to help you."
-                AI assistant will not apologise for previous responses but instead will say new information was gained.
                 AI assistant will not invent anything that is not drawn directly from the context.
                 Answer in markdown syntax, with code snippets if needed. Be as detailed as possible when answering.
                 `
-    const stream = createStreamableValue('');
-    stream.update('');
-    (async () => {
-        try {
-            const { textStream } = streamText({
-                model: google('gemini-1.5-flash'),
-                prompt: prompt
-            })
-            for await (const delta of textStream) {
-                stream.update(delta)
+    const stream = createStreamableValue('')
+
+    const responseStream = await ai.models.generateContentStream({
+        model: 'gemini-2.5-flash-lite',
+        contents: prompt
+    })
+
+        ; (async () => {
+            try {
+                for await (const chunk of responseStream) {
+                    if (chunk.text) {
+                        stream.update(chunk.text)
+                    }
+                }
+            } finally {
+                stream.done()
             }
-        }
-        finally {
-            stream.done();
-        }
-    })()
+        })()
     return { output: stream.value, filesReferences: result }
 }

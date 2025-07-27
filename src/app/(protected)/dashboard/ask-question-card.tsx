@@ -94,9 +94,16 @@ const AskQuestionCard = () => {
           </DialogHeader>
           <MDEditor.Markdown
             source={answer}
-            className="md-editor-white scrollbar-none max-h-[40vh] max-w-[75vw] scrollbar-none"
+            className="md-editor-white scrollbar-none max-h-[50vh] max-w-[75vw] border-1"
+            components={{
+              mark: ({ children }) => (
+                <mark className="bg-red-800 text-black px-1 rounded-sm">
+                  {children}
+                </mark>
+              )
+            }}
           />
-          <div className="h-4"></div>
+
           <CodeReferences filesReferences={filesReferences} />
           <Button
             type="button"

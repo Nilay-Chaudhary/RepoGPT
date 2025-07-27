@@ -12,7 +12,7 @@ const CodeReferences = ({ filesReferences }: Props) => {
     const [tab, setTab] = useState(filesReferences[0]?.fileName)
     if (filesReferences.length === 0) return null;
     return (
-        <div className='max-w-[75vw] scrollbar-none'>
+        <div className='max-w-[75vw]  scrollbar-none'>
             <Tabs value={tab} onValueChange={setTab}>
                 <div className='overflow-scroll flex gap-2 bg-gray-200 p-1 rounded-md scrollbar-none'>
                     {filesReferences.map(file => (
@@ -27,7 +27,7 @@ const CodeReferences = ({ filesReferences }: Props) => {
                     ))}
                 </div>
                 {filesReferences.map(file => (
-                    <TabsContent key={file.fileName} value={file.fileName} className='max-w-[75vw] max-h-[40vh] overflow-scroll rounded-md scrollbar-none'>
+                    <TabsContent key={file.fileName} value={file.fileName} className='max-w-[75vw] max-h-[50vh] overflow-scroll rounded-md scrollbar-none'>
                         <SyntaxHighlighter language='typescript' style={lucario}>
                             {file.sourceCode}
                         </SyntaxHighlighter>

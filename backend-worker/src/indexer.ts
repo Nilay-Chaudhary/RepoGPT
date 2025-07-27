@@ -2,39 +2,59 @@ import { GithubRepoLoader } from "@langchain/community/document_loaders/web/gith
 import { Document } from "@langchain/core/documents";
 import { db } from './lib/prisma.js';
 import { Octokit } from "octokit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from '@google/genai'
 
-const DEFAULT_API_KEY = process.env.GEMINI_API_KEY!;
-const defaultClient = new GoogleGenerativeAI(DEFAULT_API_KEY);
+const defaultClient = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY!,
+    vertexai: false,
+})
 
-export async function summariseCode(doc: Document, client?: GoogleGenerativeAI) {
+export async function summariseCode(
+    doc: Document,
+    client: GoogleGenAI = defaultClient
+): Promise<string> {
     try {
-        const usedClient = client ?? defaultClient;
-        const model = usedClient.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-        const code = doc.pageContent.slice(0, 10000);
-        const prompt =
-            `
+        const code = doc.pageContent.slice(0, 10000)
+        const prompt = `
             You are an intelligent senior software developer who speacializes in onboarding junior software
-            engineers onto projects. You are explaining the purpose of the 
-            ${doc.metadata.source} file. Here is the code \n\n ${code} \n \n
-            Give a to-the-point summary of no more than 200 words of the code above.
-        `;
-        const response = await model.generateContent([prompt]);
-        return response.response.text();
+            engineers onto projects.You are explaining the purpose of the 
+            ${doc.metadata.source} file.Here is the code \n\n ${code} \n \n
+            Give a to - the - point summary in under 5000 individual characters of the code above.
+            Make sure the output is under 2000 tokens or 5000 characters
+            `
+        const response = await client.models.generateContent({
+            model: "gemini-2.0-flash-lite",
+            contents: prompt
+        })
+
+        return response?.text?.trim() ? response?.text?.trim() : "";
     } catch (error) {
-        console.error("Error while summarising:", error);
-        return "";
+        console.log("Error while summarising:", error)
+        return ""
     }
 }
 
-export async function generateEmbedding(summary: string, client?: GoogleGenerativeAI) {
+export async function generateEmbedding(
+    summary: string,
+    client: GoogleGenAI = defaultClient
+): Promise<number[]> {
+    // console.log("embedding...")
     try {
-        const usedClient = client ?? defaultClient;
-        const model = usedClient.getGenerativeModel({ model: "text-embedding-004" });
-        const result = await model.embedContent(summary);
-        return result.embedding.values;
+        const resp = await client.models.embedContent({
+            model: 'gemini-embedding-001',
+            contents: [summary],
+
+            config: {
+                outputDimensionality: 768
+            }
+        })
+
+        const embeddings = (resp as any).embeddings
+        const vector: number[] = embeddings?.[0]?.values ?? []
+        // console.log(`Expected 768 dims but got ${vector.length}`)
+        return vector;
     } catch (error) {
-        console.error("Error while embedding:", error);
+        console.log("Error while embedding:", error)
         return [];
     }
 }
@@ -118,11 +138,14 @@ export const indexGithubRepo = async (
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const genAIClients = API_KEYS.map((key) => new GoogleGenerativeAI(key));
-
+const genAIClients = API_KEYS.map(key =>
+    new GoogleGenAI({
+        apiKey: key,
+        vertexai: false
+    })
+)
 export const generateEmbeddings = async (docs: Document[]) => {
     const results = [];
-
     for (let i = 0; i < docs.length; i++) {
         const client = genAIClients[i % genAIClients.length];
         const doc = docs[i];
@@ -130,8 +153,8 @@ export const generateEmbeddings = async (docs: Document[]) => {
         try {
             console.log("Sending a file...")
             const summary = await summariseCode(doc, client);
+            // console.log("embedding now...")
             const embedding = await generateEmbedding(summary, client);
-
             results.push({
                 summary,
                 embedding,
@@ -139,7 +162,7 @@ export const generateEmbeddings = async (docs: Document[]) => {
                 fileName: doc.metadata.source,
             });
         } catch (err) {
-            console.error(`Failed for ${doc.metadata.source}:`, err);
+            console.log(`Failed for ${doc.metadata.source}:`, err);
         }
 
         await delay(210);

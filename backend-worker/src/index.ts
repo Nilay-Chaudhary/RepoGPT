@@ -17,7 +17,7 @@ app.post("/index", async (req, res) => {
   res.status(202).json({ status: "queued" });
 
   try {
-    console.log("Indexing repo...");
+    console.log("Indexing repo", githubUrl);
     await indexGithubRepo(projectId, githubUrl, githubToken);
     await db.project.update({
       where: { id: projectId },

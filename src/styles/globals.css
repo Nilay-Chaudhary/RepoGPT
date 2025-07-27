@@ -134,6 +134,7 @@
   scrollbar-width: none;    
 }
 
+
 .md-editor-white {
   background-color: white !important;
   color: black !important;
@@ -150,7 +151,7 @@
 
 .md-editor-white pre,
 .md-editor-white code {
-  background-color: #f5f5f5 !important;
+  background-color: #ccc !important;
   color: #111 !important;
 }
 
@@ -170,6 +171,7 @@
   margin: 1em 0;
   padding: 0.5em 1em;
 }
+
 
 @keyframes small-bounce {
   0%, 100%   { transform: translateY(0); }

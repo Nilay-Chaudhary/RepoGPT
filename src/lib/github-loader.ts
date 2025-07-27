@@ -3,7 +3,7 @@ import { Document } from "@langchain/core/documents";
 import { generateEmbedding, summariseCode } from "./gemini";
 import { db } from "@/server/db";
 import { Octokit } from "octokit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from '@google/genai'
 
 const API_KEYS = [
   process.env.GEMINI_API_KEY!,
@@ -49,7 +49,7 @@ export async function getFileCount(
   const fileCount = treeData.tree
     .filter(item => item.type === "blob")
     .filter(item => !item.path.includes("node_modules/"))
-    .length; 
+    .length;
   return fileCount;
 }
 
@@ -129,8 +129,12 @@ export const indexGithubRepo = async (
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const genAIClients = API_KEYS.map((key) => new GoogleGenerativeAI(key));
-
+const genAIClients = API_KEYS.map(key =>
+  new GoogleGenAI({
+    apiKey: key,
+    vertexai: false
+  })
+)
 export const generateEmbeddings = async (docs: Document[]) => {
   const results = [];
 
