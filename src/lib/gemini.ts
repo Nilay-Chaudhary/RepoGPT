@@ -14,7 +14,7 @@ export const aiSummariseCommit = async (
     const usedClient = client ?? defaultClient;
     const prompt = `
                 You are an expert programmer. Summarize the following git diff as a simple bullet list of changes. For each change, include:
-                - A very short action description (e.g. “Remove X”, “Add Y”, “Rename Z to W”)
+                - A short action description (e.g. “Changed useEffect to setTimeout”, “Added Home component”, Replace fetch with axios”)
                 - The file path in square brackets
                 Only include actual additions (+) or deletions (–). Ignore context lines.  
                 Format each bullet like:
@@ -22,8 +22,8 @@ export const aiSummariseCommit = async (
                 EXAMPLE SUMMARY COMMENTS:
                 \n
                 * Raised the amount of returned recordings from \'10\' to \'100\' [packages/server/recordings_api.ts] 
-                * Fixed a typo in teh github action name [.github/workflows/summariser.yml]
-                * Moves the octokit initialization to a separate file [src/octolit.ts], [src/index.ts]
+                * Fixed a typo in the github action name [.github/workflows/summariser.yml]
+                * Moved the octokit initialization to a separate file [src/octolit.ts], [src/index.ts]
                 * Lowered numeric tolerance for test files
                 \n
                 Here’s the diff:
