@@ -9,6 +9,45 @@ const defaultClient = new GoogleGenAI({
     vertexai: false,
 })
 
+const API_KEYS = [
+    process.env.GEMINI_API_KEY!,
+    process.env.GEMINI_API_KEY_2!,
+    process.env.GEMINI_API_KEY_3!,
+    process.env.GEMINI_API_KEY_4!,
+    process.env.GEMINI_API_KEY_5!,
+    process.env.GEMINI_API_KEY_6!,
+    process.env.GEMINI_API_KEY_7!,
+    process.env.GEMINI_API_KEY_8!,
+    process.env.GEMINI_API_KEY_9!,
+    process.env.GEMINI_API_KEY_10!,
+];
+
+const RATE_LIMIT = 30;
+const WINDOW = 60 * 1000;
+
+const requestsMap = new Map<string, number[]>();
+
+function isAllowed(apiKey: string): boolean {
+    const now = Date.now();
+    const windowStart = now - WINDOW;
+    let timestamps = requestsMap.get(apiKey) || [];
+    timestamps = timestamps.filter(ts => ts > windowStart);
+    if (timestamps.length >= RATE_LIMIT) {
+        requestsMap.set(apiKey, timestamps);
+        return false;
+    }
+    timestamps.push(now);
+    requestsMap.set(apiKey, timestamps);
+    return true;
+}
+
+async function waitForSlot(apiKey: string) {
+    while (!isAllowed(apiKey)) {
+        await new Promise(res => setTimeout(res, 500));
+    }
+}
+
+
 export async function summariseCode(
     doc: Document,
     client: GoogleGenAI = defaultClient
@@ -60,18 +99,6 @@ export async function generateEmbedding(
 }
 
 
-const API_KEYS = [
-    process.env.GEMINI_API_KEY!,
-    process.env.GEMINI_API_KEY_2!,
-    process.env.GEMINI_API_KEY_3!,
-    process.env.GEMINI_API_KEY_4!,
-    process.env.GEMINI_API_KEY_5!,
-    process.env.GEMINI_API_KEY_6!,
-    process.env.GEMINI_API_KEY_7!,
-    process.env.GEMINI_API_KEY_8!,
-    process.env.GEMINI_API_KEY_9!,
-    process.env.GEMINI_API_KEY_10!,
-];
 
 async function getDefaultBranch(owner: string, repo: string, githubToken?: string) {
     const octokit = new Octokit({
@@ -148,9 +175,11 @@ export const generateEmbeddings = async (docs: Document[]) => {
     const results = [];
     for (let i = 0; i < docs.length; i++) {
         const client = genAIClients[i % genAIClients.length];
+        const apiKey = API_KEYS[i % API_KEYS.length];
         const doc = docs[i];
         if (!doc) continue;
         try {
+            await waitForSlot(apiKey);
             console.log("Sending a file...")
             const summary = await summariseCode(doc, client);
             // console.log("embedding now...")
