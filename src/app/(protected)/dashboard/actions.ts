@@ -61,3 +61,25 @@ export async function askQuestion(question: string, projectId: string) {
 
     return { output: stream.value, filesReferences: result }
 }
+
+// Server action to save an answer (protected, runs on server)
+import { auth } from "@clerk/nextjs/server";
+
+export async function saveAnswer({ projectId, question, answer, filesReferences }: {
+  projectId: string;
+  question: string;
+  answer: string;
+  filesReferences: { fileName: string; sourceCode: string; summary: string }[];
+}) {
+  const user = await auth();
+  if (!user?.userId) throw new Error("Not authenticated");
+  await db.question.create({
+    data: {
+      projectId,
+      userId: user.userId,
+      question,
+      answer,
+      filesReferences: filesReferences.length ? filesReferences : undefined,
+    },
+  });
+}
