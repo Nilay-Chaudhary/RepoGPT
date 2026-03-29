@@ -1,104 +1,87 @@
+import { GoogleGenAI } from '@google/genai';
+const geminiClient = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY!,
+    vertexai: false,
+});
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { Document } from "@langchain/core/documents";
 import { db } from './lib/prisma.js';
 import { Octokit } from "octokit";
-import { GoogleGenAI } from '@google/genai'
 
-const defaultClient = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY!,
-    vertexai: false,
-})
+import { OpenAI } from "openai";
 
-const API_KEYS = [
-    process.env.GEMINI_API_KEY!,
-    process.env.GEMINI_API_KEY_2!,
-    process.env.GEMINI_API_KEY_3!,
-    process.env.GEMINI_API_KEY_4!,
-    process.env.GEMINI_API_KEY_5!,
-    process.env.GEMINI_API_KEY_6!,
-    process.env.GEMINI_API_KEY_7!,
-    process.env.GEMINI_API_KEY_8!,
-    process.env.GEMINI_API_KEY_9!,
-    process.env.GEMINI_API_KEY_10!,
-];
+const client = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+});
 
-const RATE_LIMIT = 30;
-const WINDOW = 60 * 1000;
+const groqDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const requestsMap = new Map<string, number[]>();
-
-function isAllowed(apiKey: string): boolean {
-    const now = Date.now();
-    const windowStart = now - WINDOW;
-    let timestamps = requestsMap.get(apiKey) || [];
-    timestamps = timestamps.filter(ts => ts > windowStart);
-    if (timestamps.length >= RATE_LIMIT) {
-        requestsMap.set(apiKey, timestamps);
-        return false;
-    }
-    timestamps.push(now);
-    requestsMap.set(apiKey, timestamps);
-    return true;
-}
-
-async function waitForSlot(apiKey: string) {
-    while (!isAllowed(apiKey)) {
-        await new Promise(res => setTimeout(res, 500));
-    }
-}
-
-
-export async function summariseCode(
-    doc: Document,
-    client: GoogleGenAI = defaultClient
-): Promise<string> {
+async function summariseCode(doc: Document): Promise<string> {
     try {
-        const code = doc.pageContent.slice(0, 10000)
+        const code = doc.pageContent.slice(0, 8000);
+        if (!code.trim()) return "";
+
         const prompt = `
-            You are an intelligent senior software developer who speacializes in onboarding junior software
-            engineers onto projects.You are explaining the purpose of the 
-            ${doc.metadata.source} file.Here is the code \n\n ${code} \n \n
-            Give a to - the - point summary in under 5000 individual characters of the code above.
-            Make sure the output is under 2000 tokens or 5000 characters
-            `
-        const response = await client.models.generateContent({
-            model: "gemini-2.0-flash-lite",
-            contents: prompt
-        })
+You are a senior software engineer.
 
-        return response?.text?.trim() ? response?.text?.trim() : "";
+Explain the purpose of the following file in clear, concise plain text.
+
+Focus on:
+- what the code does
+- key components or logic
+- any important behaviors
+
+Avoid:
+- unnecessary details
+- formatting, markdown, or bullet points
+
+Keep the response short and to the point.
+
+File: ${doc.metadata.source}
+
+Code:
+${code}
+`;
+
+        await groqDelay(500);
+        const response = await client.responses.create({
+            input: prompt,
+            model: "qwen/qwen3-32b",
+        });
+        return (response.output_text || "").trim();
     } catch (error) {
-        console.log("Error while summarising:", error)
-        return ""
+        console.error("Error while summarising:", error);
+        return "";
     }
 }
 
-export async function generateEmbedding(
-    summary: string,
-    client: GoogleGenAI = defaultClient
-): Promise<number[]> {
-    // console.log("embedding...")
+async function generateEmbedding(text: string): Promise<number[]> {
     try {
-        const resp = await client.models.embedContent({
-            model: 'gemini-embedding-001',
-            contents: [summary],
+        if (!text || !text.trim()) {
+            throw new Error("Empty text for embedding")
+        }
 
+        const resp = await geminiClient.models.embedContent({
+            model: 'gemini-embedding-001',
+            contents: [text],
             config: {
-                outputDimensionality: 768
-            }
+                outputDimensionality: 768,
+            },
         })
+
+        console.log("Embedding API response:", resp)
 
         const embeddings = (resp as any).embeddings
         const vector: number[] = embeddings?.[0]?.values ?? []
-        // console.log(`Expected 768 dims but got ${vector.length}`)
-        return vector;
+        console.log("Embedding vector length:", vector.length)
+        return vector
+
     } catch (error) {
-        console.log("Error while embedding:", error)
-        return [];
+        console.error("Error while embedding:", error)
+        return []
     }
 }
-
-
 
 async function getDefaultBranch(owner: string, repo: string, githubToken?: string) {
     const octokit = new Octokit({
@@ -165,25 +148,15 @@ export const indexGithubRepo = async (
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const genAIClients = API_KEYS.map(key =>
-    new GoogleGenAI({
-        apiKey: key,
-        vertexai: false
-    })
-)
 export const generateEmbeddings = async (docs: Document[]) => {
     const results = [];
     for (let i = 0; i < docs.length; i++) {
-        const client = genAIClients[i % genAIClients.length];
-        const apiKey = API_KEYS[i % API_KEYS.length];
         const doc = docs[i];
         if (!doc) continue;
         try {
-            await waitForSlot(apiKey);
             console.log("Sending a file...")
-            const summary = await summariseCode(doc, client);
-            // console.log("embedding now...")
-            const embedding = await generateEmbedding(summary, client);
+            const summary = await summariseCode(doc);
+            const embedding = await generateEmbedding(summary);
             results.push({
                 summary,
                 embedding,

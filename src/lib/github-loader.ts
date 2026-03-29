@@ -1,22 +1,8 @@
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { Document } from "@langchain/core/documents";
-import { generateEmbedding, summariseCode } from "./gemini";
+import { generateEmbedding, summariseCode } from "./llm";
 import { db } from "@/server/db";
 import { Octokit } from "octokit";
-import { GoogleGenAI } from '@google/genai'
-
-const API_KEYS = [
-  process.env.GEMINI_API_KEY!,
-  process.env.GEMINI_API_KEY_2!,
-  process.env.GEMINI_API_KEY_3!,
-  process.env.GEMINI_API_KEY_4!,
-  process.env.GEMINI_API_KEY_5!,
-  process.env.GEMINI_API_KEY_6!,
-  process.env.GEMINI_API_KEY_7!,
-  process.env.GEMINI_API_KEY_8!,
-  process.env.GEMINI_API_KEY_9!,
-  process.env.GEMINI_API_KEY_10!,
-];
 
 export async function getFileCount(
   githubOwner: string,
@@ -129,23 +115,16 @@ export const indexGithubRepo = async (
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const genAIClients = API_KEYS.map(key =>
-  new GoogleGenAI({
-    apiKey: key,
-    vertexai: false
-  })
-)
 export const generateEmbeddings = async (docs: Document[]) => {
   const results = [];
 
   for (let i = 0; i < docs.length; i++) {
-    const client = genAIClients[i % genAIClients.length];
     const doc = docs[i];
     if (!doc) continue;
     try {
       console.log("Sending a file...")
-      const summary = await summariseCode(doc, client);
-      const embedding = await generateEmbedding(summary, client);
+      const summary = await summariseCode(doc);
+      const embedding = await generateEmbedding(summary);
 
       results.push({
         summary,

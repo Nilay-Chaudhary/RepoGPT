@@ -1,12 +1,7 @@
 'use server'
-import { generateEmbedding } from '@/lib/gemini'
+import { generateEmbedding, generateCompletion } from '@/lib/llm'
 import { db } from '@/server/db'
 import { createStreamableValue } from 'ai/rsc'
-import { GoogleGenAI } from '@google/genai'
-
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY_QUESTION
-})
 
 
 export async function askQuestion(question: string, projectId: string) {
@@ -57,22 +52,12 @@ export async function askQuestion(question: string, projectId: string) {
                 Answer in markdown syntax, with code snippets if needed. Be as detailed as possible when answering.
                 `
     const stream = createStreamableValue('')
+    try {
+        const reply = await generateCompletion(prompt, 1024)
+        stream.update(reply)
+    } finally {
+        stream.done()
+    }
 
-    const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash-lite',
-        contents: prompt
-    })
-
-        ; (async () => {
-            try {
-                for await (const chunk of responseStream) {
-                    if (chunk.text) {
-                        stream.update(chunk.text)
-                    }
-                }
-            } finally {
-                stream.done()
-            }
-        })()
     return { output: stream.value, filesReferences: result }
 }

@@ -1,8 +1,7 @@
 import { db } from '@/server/db';
 import { Octokit } from 'octokit'
 import axios from 'axios'
-import { aiSummariseCommit } from './gemini';
-import { GoogleGenAI } from '@google/genai'
+import { aiSummariseCommit } from './llm';
 
 export const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN!
@@ -17,30 +16,11 @@ type Response = {
     commitDate: string;
 }
 
-const API_KEYS = [
-    process.env.GEMINI_API_KEY!,
-    process.env.GEMINI_API_KEY_2!,
-    process.env.GEMINI_API_KEY_3!,
-    process.env.GEMINI_API_KEY_4!,
-    process.env.GEMINI_API_KEY_5!,
-    process.env.GEMINI_API_KEY_6!,
-    process.env.GEMINI_API_KEY_7!,
-    process.env.GEMINI_API_KEY_8!,
-    process.env.GEMINI_API_KEY_9!,
-    process.env.GEMINI_API_KEY_10!,
-];
-
 
 const MAX_COMMITS = 10;
 const DELAY_MS = 200;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const genAIClients = API_KEYS.map(key =>
-    new GoogleGenAI({
-        apiKey: key,
-        vertexai: false
-    })
-)
 export const pollCommits = async (projectId: string, githubToken?: string) => {
     const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
     const commitHashes = await getCommitHashes(githubUrl, githubToken);
@@ -49,11 +29,10 @@ export const pollCommits = async (projectId: string, githubToken?: string) => {
     const summaries: string[] = [];
     for (let i = 0; i < toProcess.length; i++) {
         const commit = toProcess[i];
-        const client = genAIClients[i % genAIClients.length];
-        if (!commit || !client) continue;
+        if (!commit) continue;
         try {
             console.log(`Summarizing commit`);
-            const summary = await summariseCommit(githubUrl, commit.commitHash, client, githubToken);
+            const summary = await summariseCommit(githubUrl, commit.commitHash, githubToken);
             summaries.push(summary);
         } catch (err) {
             console.error(`Failed to summarise`, err);
@@ -79,9 +58,8 @@ export const pollCommits = async (projectId: string, githubToken?: string) => {
 async function summariseCommit(
     githubUrl: string,
     commitHash: string,
-    client: GoogleGenAI,
     githubToken?: string
-): Promise<string> {
+) : Promise<string> {
     const [owner, repo] = githubUrl.split("/").slice(-2);
     if (!owner || !repo) {
         throw new Error("Invalid GitHub URL");
@@ -106,7 +84,7 @@ async function summariseCommit(
         .join("\n\n") ?? "";
 
     const safeDiff = fullDiff.slice(0, 500_000);
-    return (await aiSummariseCommit(safeDiff, client)) || "";
+    return (await aiSummariseCommit(safeDiff)) || "";
 }
 
 async function fetchProjectGithubUrl(projectId: string) {
