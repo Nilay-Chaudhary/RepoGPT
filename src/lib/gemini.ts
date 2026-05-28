@@ -10,7 +10,7 @@ const DEFAULT_GEMINI_TEXT_MODELS = [
 ] as const
 
 const DEFAULT_GEMINI_EMBED_MODELS = [
-    "gemini-embedding-002",
+    "gemini-embedding-2",
     "gemini-embedding-001",
 ] as const
 

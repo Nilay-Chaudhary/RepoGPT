@@ -144,7 +144,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       throw new Error("Empty text for embedding");
     }
 
-    const EMBED_MODELS = ['gemini-embedding-002', 'gemini-embedding-001'];
+    const EMBED_MODELS = ['gemini-embedding-2', 'gemini-embedding-001'];
 
     function getErrorStatus(err: unknown): number | undefined {
       if (!err || typeof err !== 'object') return undefined;
@@ -158,7 +158,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     }
 
     for (let i = 0; i < EMBED_MODELS.length; i++) {
-      const model = EMBED_MODELS[i];
+      const model = EMBED_MODELS[i]!;
       try {
         const resp = await geminiClient.models.embedContent({
           model,

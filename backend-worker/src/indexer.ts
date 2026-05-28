@@ -133,7 +133,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
         }
 
         const resp = await geminiClient.models.embedContent({
-            model: 'gemini-embedding-002',
+            model: 'gemini-embedding-2',
             contents: [text],
             config: {
                 outputDimensionality: 768,
