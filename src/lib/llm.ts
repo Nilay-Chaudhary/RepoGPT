@@ -15,12 +15,69 @@ const client = new OpenAI({
 
 export async function generateCompletion(prompt: string, maxTokens = 512): Promise<string> {
   try {
-    await delay(500);
-    const response = await client.responses.create({
-      input: prompt,
-      model: "qwen/qwen3-32b",
-    });
-    return (response.output_text || '').trim();
+    const GROQ_MODELS = [
+      "qwen/qwen3-32b",
+      "llama-3.3-70b-versatile",
+      "openai/gpt-oss-120b",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+      "openai/gpt-oss-20b",
+    ] as const;
+
+    type GroqModel = (typeof GROQ_MODELS)[number];
+
+    const MODEL_MIN_INTERVAL_MS: Record<GroqModel, number> = {
+      "qwen/qwen3-32b": 1200,
+      "llama-3.3-70b-versatile": 2200,
+      "openai/gpt-oss-120b": 2200,
+      "meta-llama/llama-4-scout-17b-16e-instruct": 2200,
+      "openai/gpt-oss-20b": 2200,
+    };
+
+    const modelLastRequestAt = new Map<GroqModel, number>();
+
+    function getErrorStatus(err: unknown): number | undefined {
+      if (!err || typeof err !== 'object') return undefined;
+      const maybeStatus = (err as { status?: unknown }).status;
+      return typeof maybeStatus === 'number' ? maybeStatus : undefined;
+    }
+
+    function isRetryableGroqError(err: unknown): boolean {
+      const status = getErrorStatus(err);
+      return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+    }
+
+    async function waitForModelWindow(model: GroqModel) {
+      const minInterval = MODEL_MIN_INTERVAL_MS[model];
+      const lastTs = modelLastRequestAt.get(model) ?? 0;
+      const waitMs = Math.max(0, minInterval - (Date.now() - lastTs));
+      if (waitMs > 0) await delay(waitMs);
+    }
+
+    function markModelUsed(model: GroqModel) {
+      modelLastRequestAt.set(model, Date.now());
+    }
+
+    const maxAttempts = GROQ_MODELS.length * 2;
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const model = GROQ_MODELS[attempt % GROQ_MODELS.length] as GroqModel;
+      try {
+        await waitForModelWindow(model);
+        const response = await client.responses.create({ input: prompt, model });
+        markModelUsed(model);
+        return (response.output_text || '').trim();
+      } catch (err) {
+        lastError = err;
+        markModelUsed(model);
+        if (!isRetryableGroqError(err)) break;
+        const backoffMs = Math.min(6000, 600 + attempt * 500);
+        await delay(backoffMs);
+      }
+    }
+
+    console.error('All Groq model attempts failed:', lastError);
+    return '';
   } catch (err) {
     console.error('Error in generateCompletion', err);
     return '';
@@ -87,17 +144,38 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       throw new Error("Empty text for embedding");
     }
 
-    const resp = await geminiClient.models.embedContent({
-      model: 'gemini-embedding-001',
-      contents: [text],
-      config: {
-        outputDimensionality: 768,
-      },
-    });
+    const EMBED_MODELS = ['gemini-embedding-002', 'gemini-embedding-001'];
 
-    const embeddings = (resp as any).embeddings;
-    const vector: number[] = embeddings?.[0]?.values ?? [];
-    return vector;
+    function getErrorStatus(err: unknown): number | undefined {
+      if (!err || typeof err !== 'object') return undefined;
+      const maybeStatus = (err as { status?: unknown }).status;
+      return typeof maybeStatus === 'number' ? maybeStatus : undefined;
+    }
+
+    function isRetryableGeminiError(err: unknown): boolean {
+      const status = getErrorStatus(err);
+      return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+    }
+
+    for (let i = 0; i < EMBED_MODELS.length; i++) {
+      const model = EMBED_MODELS[i];
+      try {
+        const resp = await geminiClient.models.embedContent({
+          model,
+          contents: [text],
+          config: { outputDimensionality: 768 },
+        });
+        const embeddings = (resp as any).embeddings;
+        const vector: number[] = embeddings?.[0]?.values ?? [];
+        return vector;
+      } catch (err) {
+        if (!isRetryableGeminiError(err)) break;
+        await delay(700 + i * 300);
+      }
+    }
+
+    console.error('All Gemini embed attempts failed');
+    return [];
   } catch (error) {
     console.error("Error while embedding:", error);
     return [];

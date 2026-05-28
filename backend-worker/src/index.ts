@@ -24,9 +24,17 @@ app.post("/index", async (req, res) => {
       data: { indexingStatus: "COMPLETED" },
     });
     console.log("Done indexing");
-
   } catch (err) {
     console.error("Indexing failed:", err);
+    try {
+      await db.project.update({
+        where: { id: projectId },
+        data: { indexingStatus: "COMPLETED" },
+      });
+      console.log("Project indexingStatus set to COMPLETED after failure");
+    } catch (dbErr) {
+      console.error("Failed to update project indexingStatus after indexing error:", dbErr);
+    }
   }
 });
 

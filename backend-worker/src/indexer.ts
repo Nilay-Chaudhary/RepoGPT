@@ -17,6 +17,50 @@ const client = new OpenAI({
 
 const groqDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const GROQ_MODELS = [
+    "qwen/qwen3-32b",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-20b",
+] as const;
+
+type GroqModel = (typeof GROQ_MODELS)[number];
+
+// Keep a small safety buffer under each model's RPM limit.
+const MODEL_MIN_INTERVAL_MS: Record<GroqModel, number> = {
+    "qwen/qwen3-32b": 1200,
+    "llama-3.3-70b-versatile": 2200,
+    "openai/gpt-oss-120b": 2200,
+    "meta-llama/llama-4-scout-17b-16e-instruct": 2200,
+    "openai/gpt-oss-20b": 2200,
+};
+
+const modelLastRequestAt = new Map<GroqModel, number>();
+let modelStartIndex = 0;
+
+function getErrorStatus(err: unknown): number | undefined {
+    if (!err || typeof err !== "object") return undefined;
+    const maybeStatus = (err as { status?: unknown }).status;
+    return typeof maybeStatus === "number" ? maybeStatus : undefined;
+}
+
+function isRetryableGroqError(err: unknown): boolean {
+    const status = getErrorStatus(err);
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+async function waitForModelWindow(model: GroqModel) {
+    const minInterval = MODEL_MIN_INTERVAL_MS[model];
+    const lastTs = modelLastRequestAt.get(model) ?? 0;
+    const waitMs = Math.max(0, minInterval - (Date.now() - lastTs));
+    if (waitMs > 0) await groqDelay(waitMs);
+}
+
+function markModelUsed(model: GroqModel) {
+    modelLastRequestAt.set(model, Date.now());
+}
+
 async function summariseCode(doc: Document): Promise<string> {
     try {
         const code = doc.pageContent.slice(0, 8000);
@@ -44,12 +88,38 @@ Code:
 ${code}
 `;
 
-        await groqDelay(500);
-        const response = await client.responses.create({
-            input: prompt,
-            model: "qwen/qwen3-32b",
-        });
-        return (response.output_text || "").trim();
+        const maxAttempts = GROQ_MODELS.length * 2;
+        let lastError: unknown;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const model = GROQ_MODELS[(modelStartIndex + attempt) % GROQ_MODELS.length]!;
+            try {
+                await waitForModelWindow(model);
+                const response = await client.responses.create({
+                    input: prompt,
+                    model,
+                });
+                markModelUsed(model);
+                modelStartIndex = (GROQ_MODELS.indexOf(model) + 1) % GROQ_MODELS.length;
+                console.log(`Summary model used: ${model} | file: ${doc.metadata.source}`);
+                return (response.output_text || "").trim();
+            } catch (err) {
+                lastError = err;
+                markModelUsed(model);
+
+                if (!isRetryableGroqError(err)) {
+                    console.error(`Non-retryable summarization error on ${model}:`, err);
+                    break;
+                }
+
+                const backoffMs = Math.min(6000, 600 + attempt * 500);
+                console.warn(`Retryable summarization error on ${model}. Backing off ${backoffMs}ms.`);
+                await groqDelay(backoffMs);
+            }
+        }
+
+        console.error("All model attempts failed for summarisation:", lastError);
+        return "";
     } catch (error) {
         console.error("Error while summarising:", error);
         return "";
@@ -63,7 +133,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
         }
 
         const resp = await geminiClient.models.embedContent({
-            model: 'gemini-embedding-001',
+            model: 'gemini-embedding-002',
             contents: [text],
             config: {
                 outputDimensionality: 768,
@@ -154,7 +224,7 @@ export const generateEmbeddings = async (docs: Document[]) => {
         const doc = docs[i];
         if (!doc) continue;
         try {
-            console.log("Sending a file...")
+            console.log(`Sending file ${i + 1} out of ${docs.length}: ${doc.metadata.source}`)
             const summary = await summariseCode(doc);
             const embedding = await generateEmbedding(summary);
             results.push({
