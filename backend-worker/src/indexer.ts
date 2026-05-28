@@ -217,6 +217,7 @@ export const indexGithubRepo = async (
     );
 };
 
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const generateEmbeddings = async (docs: Document[]) => {
     const results = [];
